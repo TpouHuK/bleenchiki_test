@@ -4,9 +4,7 @@ use std::f32::consts::PI;
 struct ParticleState {
     x: f32,
     y: f32,
-    angle: f32,
-    size: f32,
-    opacity: f32,
+    angle: f32, size: f32, opacity: f32,
 }
 
 pub struct SmokeParticle {
@@ -121,3 +119,24 @@ impl SmokeGenerator {
         self.particles.retain(|x| { x.alive() });
     }
 }
+
+
+/*
+ * this is commented out code for drawing particles
+        for particle in &generator.particles {
+            let (cx, cy) = particle.get_pos();
+            let p_size: f32 = particle.get_size();
+            let opacity = particle.get_opacity();
+            let angle = particle.get_angle();
+
+            let quad = get_rotated_quad(cx, cy, p_size, p_size, angle);
+            let color = Color::from_rgba(1.0, 1.0, 1.0, opacity);
+            let colors: [Color; 4] = [color; 4];
+            let image_cords = get_rotated_quad(0.0, 0.0, 2.0, 2.0, 0.0);
+            graphics.draw_quad_image_tinted_four_color(quad, colors, image_cords, smoke_texture);
+        }
+
+fn get_smoke_texture(graphics: &mut Graphics2D) {
+        let image = graphics.create_image_from_file_path(None, speedy2d::image::ImageSmoothingMode::NearestNeighbor, Path::new("./smoke_particle.png")).unwrap();
+}
+*/
