@@ -80,7 +80,7 @@ impl MyWindowHandler {
         let color = Color::from_rgba(0.5, 0.5, 0.5, 1.0);
         let position = (400.0, 400.0);
         let rect = Rect::new((0.0, 0.0).into(), (700.0, 700.0).into());
-        graphics.draw_rectangle(rect, color);
+        //graphics.draw_rectangle(rect, color);
         self.simulation.display(graphics);
         self.simulation.update();
     }

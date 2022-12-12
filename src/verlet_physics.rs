@@ -38,7 +38,7 @@ fn sqr(x: f32) -> f32 {
 impl PhysicsParticle {
     pub fn display(&self, graphics: &mut Graphics2D) {
         let position = (self.x, self.y);
-        graphics.draw_circle(position, self.radius, self.color);
+        graphics.draw_circle(position, self.radius*1.1 + 10.0, self.color);
     }
     
     pub fn physics_step(&mut self) {
