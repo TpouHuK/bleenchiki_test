@@ -1,3 +1,4 @@
+use rand::random;
 use speedy2d::Graphics2D;
 use speedy2d::color::Color;
 
@@ -19,6 +20,16 @@ fn hsv_to_rgb(h: f32, s: f32, v: f32) -> (f32, f32, f32) {
     }
 }
 
+fn get_distance(a: &PhysicsParticle, b: &PhysicsParticle) -> f32 {
+    (sqr(a.x - b.x) + sqr(a.y - b.y)).sqrt()
+}
+
+fn get_angle(a: &PhysicsParticle, b: &PhysicsParticle) -> f32 {
+    let dy = b.y - a.y;
+    let dx = b.x - a.x;
+    dy.atan2(dx)
+}
+
 pub struct PhysicsParticle {
     x: f32,
     y: f32,
@@ -26,8 +37,10 @@ pub struct PhysicsParticle {
     old_y: f32,
     acc_x: f32,
     acc_y: f32,
+    mass: f32,
+    angle: f32,
+    fixed: bool,
     radius: f32,
-    heat: f32,
     color: Color,
 }
 
@@ -38,12 +51,15 @@ fn sqr(x: f32) -> f32 {
 impl PhysicsParticle {
     pub fn display(&self, graphics: &mut Graphics2D) {
         let position = (self.x, self.y);
-        graphics.draw_circle(position, self.radius*1.1 + 10.0, self.color);
+        graphics.draw_circle(position, self.radius, self.color);
     }
     
     pub fn physics_step(&mut self) {
-        let vel_x = self.x - self.old_x;
-        let vel_y = self.y - self.old_y;
+        if self.fixed { return } ;
+
+        const AIR_FRICTION: f32 = 0.990;
+        let vel_x = (self.x - self.old_x) * AIR_FRICTION;
+        let vel_y = (self.y - self.old_y) * AIR_FRICTION;
         self.old_x = self.x;
         self.old_y = self.y;
         self.x = self.x + vel_x + self.acc_x * DELTA_TIME * DELTA_TIME;
@@ -52,33 +68,10 @@ impl PhysicsParticle {
         self.acc_y = 0.0;
     }
 
-    pub fn update_heat(&mut self) {
-        if self.y > 690.0 {
-            self.heat += 0.04;
-        } else {
-            self.heat *= 0.99;
-        }
-        if self.y < 300.0 {
-            if self.heat > 0.0 {
-            self.heat -= 0.1;
-            }
-        }
-        if self.heat > 0.0 {
-            self.accelerate(0.0, -self.heat*400.0);
-        }
-        self.radius = 1.0 + self.heat * 5.0
-    }
-
-    pub fn update_color(&mut self) {
-        let (r, g, b) = hsv_to_rgb(0.05, 1.0, self.heat);
-        self.color = Color::from_rgb(r, g, b);
-    }
-
     pub fn accelerate(&mut self, acc_x: f32, acc_y: f32) {
         self.acc_x += acc_x;
         self.acc_y += acc_y;
     }
-
 
     pub fn constrain_circle(&mut self, cx: f32, cy: f32, r: f32) {
         let to_obj_x = self.x - cx;
@@ -117,57 +110,116 @@ impl PhysicsParticle {
             self.y += (self.radius/trig_dist) * delta * n_y;
             other.x -= (other.radius/trig_dist) * delta * n_x;
             other.y -= (other.radius/trig_dist) * delta * n_y;
-            let combined_heat = (self.heat + other.heat) / 2.0;
-
-            self.heat += (combined_heat - self.heat) * 0.03;
-            other.heat += (combined_heat - other.heat) * 0.03;
-
         }
+    }
+}
+
+
+pub struct Branch {
+    particle_a: usize,
+    particle_b: usize,
+    length: f32,
+    target_angle: f32,
+}
+
+pub struct Tree ();
+
+impl Tree {
+    pub fn new(simulation: &mut ParticleSimulation) -> Self {
+        let (root_x, root_y) = (1280.0/2.0, 620.0);
+        let root_r = 3.0;
+        let root = simulation.new_particle(root_x, root_y, root_r, 1.0,  true);
+        simulation.particles[root].angle = (-90f32).to_radians();
+
+        let mut x = root_x; let mut y = root_y;
+        let mut last = root;
+        let mut mass = 100.0;
+        for _ in 0..40 {
+            x += random::<f32>()*30.0 - 15.0;
+            y -= 10.0;
+            mass -= 2.0;
+            let r = 4.0;
+            let new = simulation.new_particle(x, y, r, mass, false);
+            let angle =  (random::<f32>()*10.0).to_radians();
+            simulation.new_branch(last, new, 10.0, angle);
+            last = new;
+        }
+
+        Tree()
+    }
+    
+    pub fn test_new(simulation: &mut ParticleSimulation) -> Self {
+        let (root_x, root_y) = (1280.0/2.0, 620.0);
+        let root_r = 3.0;
+        let root = simulation.new_particle(root_x, root_y, root_r, 1.0,  true);
+
+
+        let d90 = (90f32).to_radians();
+        let stem_point = simulation.new_particle(root_x - 100.0, root_y - 100.0, root_r*1.0, 1.0, false);
+        simulation.new_branch(root, stem_point, 100.0, d90/2.0);
+
+        let another_point = simulation.new_particle(root_x + 200.0, root_y - 100.0, root_r, 1.0, false);
+        simulation.new_branch(stem_point, another_point, 100.0, d90/2.0);
+
+        let another_point2 = simulation.new_particle(root_x + 200.0, root_y - 100.0, root_r*1.0, 1.0, false);
+        simulation.new_branch(another_point, another_point2, 100.0, 0.0);
+
+        Tree()
     }
 }
 
 pub struct ParticleSimulation {
     particles: Vec<PhysicsParticle>,
-}
-
-pub fn get_pair_mut<T>(
-        slice: &mut [T],
-        i: usize,
-        j: usize,
-) -> Option<(&mut T, &mut T)> {
-    let (first, second) = (i.min(j), i.max(j));
-    
-    if i == j || second >= slice.len() {
-        return None;
-    }
-    
-    let (_, tmp) = slice.split_at_mut(first);
-    let (x, rest) = tmp.split_at_mut(1);
-    let (_, y) = rest.split_at_mut(second - first - 1);
-    let pair = if i < j { 
-        (&mut x[0], &mut y[0])
-    } else {
-        (&mut y[0], &mut x[0])
-    };
-    
-    Some(pair)
+    branches: Vec<Branch>,
 }
 
 impl ParticleSimulation {
     pub fn new() -> Self {
-        ParticleSimulation{ particles: Vec::new() }
+        ParticleSimulation{ particles: Vec::new() , branches: Vec::new() }
     }
 
     pub fn update(&mut self) {
-        for _ in 0..12 {
-            self.solve_collisions(); 
+        for _ in 0..1 {
+            //self.solve_collisions(); 
+            self.solve_branches();
         }
+
         for particle in &mut self.particles {
-            particle.accelerate(0.0, 150.0); // Applying gravity
+            //particle.accelerate(0.0, 150.0); // Applying gravity
             particle.physics_step();
-            particle.update_heat();
-            particle.update_color();
-            particle.constrain_rect(0.0, 0.0, 700.0, 700.0);
+        }
+
+    }
+
+    fn solve_branches(&mut self) {
+        for branch in &self.branches {
+            let [a, b] = self.particles.get_many_mut([branch.particle_a, branch.particle_b]).unwrap();
+            let dist = get_distance(a, b);
+            let angle = get_angle(a, b);
+            println!("a: {}, b: {}, angle: {}", branch.particle_a, branch.particle_b, a.angle.to_degrees());
+            // Forcing distance
+            let (c_sin, c_cos) = angle.sin_cos();
+            let (set_x, set_y) = (a.x + branch.length*c_cos, a.y + branch.length*c_sin);
+            b.x = set_x;
+            b.y = set_y;
+            let (t_sin, t_cos) = (a.angle + branch.target_angle).sin_cos();
+            let (tgt_x, tgt_y) = (a.x + branch.length*t_cos, a.y + branch.length*t_sin);
+
+            const POWER: f32 = 1.0;
+            let sum = a.mass + b.mass;
+            let b_power = POWER/(b.mass/sum);
+            let a_power = POWER/(a.mass/sum);
+
+            let bdx = (tgt_x - b.x) * b_power;
+            let bdy = (tgt_y - b.y) * b_power;
+            b.accelerate(bdx, bdy);
+            b.angle = angle;
+
+            //if !a.fixed {
+               // let adx = -(tgt_x - b.x) * a_power;
+              //  let ady = -(tgt_y - b.y) * a_power;
+             //   a.accelerate(adx, ady);
+            //}
         }
     }
 
@@ -191,7 +243,17 @@ impl ParticleSimulation {
         }
     }
 
-    pub fn new_particle(&mut self, x: f32, y: f32, r: f32) {
+    pub fn new_branch(&mut self, particle_a: usize, particle_b: usize, length: f32,target_angle: f32){
+        let branch = Branch {
+            particle_a,
+            particle_b,
+            length,
+            target_angle,
+        };
+        self.branches.push(branch);
+    }
+
+    pub fn new_particle(&mut self, x: f32, y: f32, r: f32, mass: f32, fixed: bool) -> usize {
         let particle = PhysicsParticle {
             x,
             y,
@@ -199,10 +261,13 @@ impl ParticleSimulation {
             old_y: y,
             acc_x: 0.0,
             acc_y: 0.0,
+            angle: 0.0,
+            mass,
+            fixed,
             radius: r,
-            heat: 0.0,
             color: Color::from_rgb(1.0, 1.0, 1.0),
         };
         self.particles.push(particle);
+        self.particles.len() - 1
     }
 }
