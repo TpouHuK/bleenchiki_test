@@ -6,7 +6,7 @@ use speedy2d::Window;
 use speedy2d::dimen::{Vector2, Vec2};
 use speedy2d::color::Color;
 use speedy2d::shape::Rect;
-use speedy2d::window::{WindowHandler, WindowHelper};
+use speedy2d::window::{WindowHandler, WindowHelper, MouseButton};
 use speedy2d::Graphics2D;
 use std::time;
 use std::thread::sleep;
@@ -18,6 +18,7 @@ use verlet_physics::*;
 
 struct MyWindowHandler {
     mouse_pos: (f32, f32),
+    selected_point: Option<usize>,
     last_frame: time::Instant,
     dt: f32,
     ticks: f32,
@@ -48,9 +49,10 @@ impl MyWindowHandler {
     fn new(simulation: ParticleSimulation, tree: Tree) -> Self {
         let last_frame = time::Instant::now();
         let mouse_pos = (0.0, 0.0);
+        let selected_point = None;
         let dt = 0.0;
         let ticks = 0.0;
-        MyWindowHandler { mouse_pos, last_frame, dt, ticks, simulation, tree }
+        MyWindowHandler { mouse_pos, selected_point, last_frame, dt, ticks, simulation, tree }
     }
 
     fn calc_fps(&mut self) {
@@ -77,6 +79,9 @@ impl WindowHandler for MyWindowHandler
     {
         graphics.clear_screen(Color::from_rgba(0.0, 0.0, 0.0, 1.0));
         self.calc_fps();
+        if let Some(point) = self.selected_point {
+            self.simulation.particles[point].pos = self.mouse_pos.into();
+        }
         self._draw(graphics);
         helper.request_redraw();
     }
@@ -85,13 +90,39 @@ impl WindowHandler for MyWindowHandler
         self.mouse_pos = (mouse_pos.x, mouse_pos.y);
     }
 
+    fn on_mouse_button_down(&mut self, _helper: &mut WindowHelper, mouse_button: MouseButton) {
+        match mouse_button {
+            MouseButton::Left => { self.selected_point = self.simulation.select_point(self.mouse_pos.into())},
+            MouseButton::Right => { },
+            _ => {},
+        }
+    }
+
+    fn on_mouse_button_up(&mut self, _helper: &mut WindowHelper, mouse_button: MouseButton) {
+        match mouse_button {
+            MouseButton::Left => { self.selected_point = None },
+            MouseButton::Right => { },
+            _ => {},
+        }
+    }
+
+
 }
 
 fn main() {
     let window = Window::new_centered("Hello testing", (1280, 720)).unwrap();
     let mut simulation = ParticleSimulation::new();
+
+    let a = simulation.new_particle(glam::Vec2::new(100.0, 100.0), 3.0, 1.0, true);
+    let b = simulation.new_particle(glam::Vec2::new(200.0, 100.0), 3.0, 1.0, true);
+    let c = simulation.new_particle(glam::Vec2::new(200.0, 200.0), 3.0, 1.0, true);
+    simulation.new_distance_constrain_in_place(a, b);
+    simulation.new_distance_constrain_in_place(b, c);
+    simulation.new_angle_constrain_in_place(a, b, c);
+
+
     let tree = generate_tree();
-    tree.init_simulation(&mut simulation);
+    //tree.init_simulation(&mut simulation);
     let window_handler = MyWindowHandler::new(simulation, tree);
     window.run_loop::<MyWindowHandler>(window_handler);
 }

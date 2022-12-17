@@ -72,17 +72,21 @@ impl Tree {
     pub fn init_simulation(&self, simulation: &mut ParticleSimulation) {
         for i in 0..self.nodes.len() {
             let node = &self.nodes[i];
-            let (a, b) = node.get_bulked_points();
-            simulation.new_particle(a, 1.0,  1.0, i == 0);
-            simulation.new_particle(b, 1.0,  1.0, i == 0);
+            //let (a, b) = node.get_bulked_points();
+            //simulation.new_particle(a, 1.0,  1.0, i == 0);
+            simulation.new_particle(node.pos, node.width, node.width*node.width, i == 0);
 
             if let Some(parent) = node.parent {
-                //let parent = &self.nodes[parent];
-                simulation.new_distance_constrain_in_place(i*2, parent*2);
-                simulation.new_distance_constrain_in_place(i*2+1, parent*2);
-                simulation.new_distance_constrain_in_place(i*2+1, parent*2+1);
-                simulation.new_distance_constrain_in_place(i*2, parent*2+1);
-                simulation.new_distance_constrain_in_place(i*2, i*2+1);
+                let parent_node = &self.nodes[parent];
+                simulation.new_distance_constrain_in_place(i, parent);
+                if let Some(grandparent) = parent_node.parent {
+                    simulation.new_angle_constrain_in_place(i, parent, grandparent);
+                }
+                //simulation.new_distance_constrain_in_place(i*2, parent*2);
+                //simulation.new_distance_constrain_in_place(i*2+1, parent*2);
+                //simulation.new_distance_constrain_in_place(i*2+1, parent*2+1);
+                //simulation.new_distance_constrain_in_place(i*2, parent*2+1);
+                //simulation.new_distance_constrain_in_place(i*2, i*2+1);
                 
             }
         }
