@@ -96,12 +96,12 @@ impl ParticleSimulation {
 
     pub fn physics_step(&mut self) {
 
-        for _ in 0..4 {
-            self.solve_collisions(); 
+        for _ in 0..20 {
+            //self.solve_collisions(); 
             self.solve_distance_constrains();
         }
 
-        const GRAVITY: Vec2 = Vec2::new(0.0, 50.0);
+        const GRAVITY: Vec2 = Vec2::new(0.0, 1.0);
         for particle in &mut self.particles {
             particle.accelerate(GRAVITY); // Applying gravity
             particle.physics_step();
@@ -150,7 +150,7 @@ impl ParticleSimulation {
     }
 
     fn display_distance_constrain(a: &PhysicsParticle, b: &PhysicsParticle, graphics: &mut Graphics2D){
-        const LINE_THICKNESS: f32 = 3.0;
+        const LINE_THICKNESS: f32 = 1.0;
         const LINE_COLOR: Color = Color::from_rgb(237.0/255.0, 198.0/255.0, 114.0/255.0);
 
         graphics.draw_line::<(f32, f32), (f32, f32)>(a.pos.into(), b.pos.into(), LINE_THICKNESS, LINE_COLOR);
@@ -173,6 +173,16 @@ impl ParticleSimulation {
 
     pub fn new_distance_constrain(&mut self, particle_a: usize, particle_b: usize, length: f32) {
         self.distance_constrains.push(DistanceConstraint{ particle_a, particle_b, length });
+    }
+
+    pub fn get_distance_between_particles(&mut self, particle_a: usize, particle_b: usize) -> f32 {
+            let [a, b] = self.particles.get_many_mut([particle_a, particle_b]).unwrap();
+            a.pos.distance(b.pos)
+    }
+    
+    pub fn new_distance_constrain_in_place(&mut self, particle_a: usize, particle_b: usize) {
+        let length = self.get_distance_between_particles(particle_a, particle_b);
+        self.distance_constrains.push( DistanceConstraint { particle_a, particle_b, length })
     }
 
 }

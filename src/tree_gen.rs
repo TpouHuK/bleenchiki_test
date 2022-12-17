@@ -33,6 +33,14 @@ impl Node {
             parent: Some(self_id),
         }
     }
+
+    fn get_bulked_points(&self) -> (Vec2, Vec2) {
+        let angle = self.angle + PI / 2.0;
+        let half_width = self.width / 2.0;
+        let a = self.pos - Vec2::from_angle(angle) * half_width;
+        let b = self.pos + Vec2::from_angle(angle) * half_width;
+        (a, b)
+    }
 }
 
 pub struct Tree {
@@ -58,7 +66,25 @@ impl Tree {
                 const LINE_COLOR: Color = Color::from_rgb(237.0/255.0, 198.0/255.0, 114.0/255.0);
                 graphics.draw_line::<(f32, f32), (f32, f32)>(parent.pos.into(), node.pos.into(), node.width, LINE_COLOR);
             }
+        }
+    }
 
+    pub fn init_simulation(&self, simulation: &mut ParticleSimulation) {
+        for i in 0..self.nodes.len() {
+            let node = &self.nodes[i];
+            let (a, b) = node.get_bulked_points();
+            simulation.new_particle(a, 1.0,  1.0, i == 0);
+            simulation.new_particle(b, 1.0,  1.0, i == 0);
+
+            if let Some(parent) = node.parent {
+                //let parent = &self.nodes[parent];
+                simulation.new_distance_constrain_in_place(i*2, parent*2);
+                simulation.new_distance_constrain_in_place(i*2+1, parent*2);
+                simulation.new_distance_constrain_in_place(i*2+1, parent*2+1);
+                simulation.new_distance_constrain_in_place(i*2, parent*2+1);
+                simulation.new_distance_constrain_in_place(i*2, i*2+1);
+                
+            }
         }
     }
 }
@@ -84,7 +110,7 @@ fn get_angle_deviation() -> f32 {
 }
 
 fn get_split_angle() -> f32 {
-    SPLIT_ANGLE_DEFAULT + thread_rng().gen_range(-SPLIT_ANGLE_DEVIATION..SPLIT_ANGLE_DEVIATION) * if thread_rng().gen_bool(0.5) {1.0 } else { -1.0 }
+    ((SPLIT_ANGLE_DEFAULT + thread_rng().gen_range(-SPLIT_ANGLE_DEVIATION..SPLIT_ANGLE_DEVIATION)) * if thread_rng().gen_bool(0.5) { 1.0 } else { -1.0 }).to_radians()
 }
 
 fn move_forward(tree: &mut Tree, ref_root: usize) -> usize {

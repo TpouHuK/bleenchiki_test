@@ -64,8 +64,8 @@ impl MyWindowHandler {
     }
 
     fn _draw(&mut self, graphics: &mut Graphics2D) {
-        //self.simulation.display(graphics);
-        self.tree.display(graphics);
+        self.simulation.display(graphics);
+        //self.tree.display(graphics);
         self.simulation.physics_step();
     }
 }
@@ -89,8 +89,9 @@ impl WindowHandler for MyWindowHandler
 
 fn main() {
     let window = Window::new_centered("Hello testing", (1280, 720)).unwrap();
-    let simulation = ParticleSimulation::new();
+    let mut simulation = ParticleSimulation::new();
     let tree = generate_tree();
+    tree.init_simulation(&mut simulation);
     let window_handler = MyWindowHandler::new(simulation, tree);
     window.run_loop::<MyWindowHandler>(window_handler);
 }
