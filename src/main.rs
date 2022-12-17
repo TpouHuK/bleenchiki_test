@@ -1,5 +1,4 @@
 #![feature(slice_split_at_unchecked, get_many_mut)]
-
 #![allow(dead_code, unused_variables, unused_imports)]
 
 use rand::random;
@@ -13,6 +12,8 @@ use std::time;
 use std::thread::sleep;
 
 mod verlet_physics;
+mod tree_gen;
+use tree_gen::*;
 use verlet_physics::*;
 
 struct MyWindowHandler {
@@ -59,12 +60,11 @@ impl MyWindowHandler {
         self.dt = elapsed;
         self.ticks += self.dt;
         println!("fps: {fps}");
-        //sleep(time::Duration::from_millis(3000));
     }
 
     fn _draw(&mut self, graphics: &mut Graphics2D) {
         self.simulation.display(graphics);
-        self.simulation.update();
+        self.simulation.physics_step();
     }
 }
 
@@ -88,7 +88,7 @@ impl WindowHandler for MyWindowHandler
 fn main() {
     let window = Window::new_centered("Hello testing", (1280, 720)).unwrap();
     let mut simulation = ParticleSimulation::new();
-    Tree::new(&mut simulation);
+    create_new_tree(&mut simulation);
     let window_handler = MyWindowHandler::new(simulation);
     window.run_loop::<MyWindowHandler>(window_handler);
 }
