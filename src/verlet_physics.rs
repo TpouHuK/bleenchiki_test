@@ -84,7 +84,6 @@ pub fn init_test_simulation(sim: &mut ParticleSimulation) {
 pub struct ParticleSimulation {
     particles: Vec<PhysicsParticle>,
     distance_constrains: Vec<DistanceConstraint>,
-    angle_constrains: Vec<AngleConstraint>,
 }
 
 impl ParticleSimulation {
@@ -92,23 +91,22 @@ impl ParticleSimulation {
         ParticleSimulation{
             particles: Vec::new(),
             distance_constrains: Vec::new(),
-            angle_constrains: Vec::new()
         }
     }
 
     pub fn physics_step(&mut self) {
+
         for _ in 0..4 {
             self.solve_collisions(); 
             self.solve_distance_constrains();
-            self.solve_angle_constrains();
         }
 
-        const GRAVITY: Vec2 = Vec2::new(0.0, 150.0);
+        const GRAVITY: Vec2 = Vec2::new(0.0, 50.0);
         for particle in &mut self.particles {
             particle.accelerate(GRAVITY); // Applying gravity
             particle.physics_step();
             const SCREEN_MIDDLE: Vec2 = Vec2::new(1280.0/2.0, 720.0/2.0);
-            particle.constrain_circle(SCREEN_MIDDLE, 300.0);
+            //particle.constrain_circle(SCREEN_MIDDLE, 300.0);
         }
 
 
@@ -123,21 +121,6 @@ impl ParticleSimulation {
 
             if !a.fixed { a.pos += adjust_amount }
             if !b.fixed { b.pos -= adjust_amount }
-        }
-    }
-
-    fn solve_angle_constrains(&mut self) {
-        for constrain in &self.angle_constrains {
-            let [a, b, c] = self.particles.get_many_mut([constrain.particle_a, constrain.particle_b, constrain.particle_c]).unwrap();
-            let center = ((a.pos - b.pos).normalize_or_zero() + (c.pos - b.pos).normalize_or_zero()).normalize_or_zero();
-            let ba_length = b.pos.distance(a.pos);
-            let bc_length = b.pos.distance(c.pos);
-
-            let ba = center.rotate(Vec2::from_angle(constrain.angle / 2.0)) * ba_length;
-            let bc = center.rotate(Vec2::from_angle(-constrain.angle / 2.0)) * bc_length;
-
-            if !a.fixed { a.pos = b.pos + ba; }
-            if !c.fixed { c.pos = b.pos + bc; }
         }
     }
 
@@ -192,14 +175,4 @@ impl ParticleSimulation {
         self.distance_constrains.push(DistanceConstraint{ particle_a, particle_b, length });
     }
 
-    pub fn new_angle_constrain(&mut self, particle_a: usize, particle_b: usize, particle_c: usize, angle: f32) {
-        self.angle_constrains.push(AngleConstraint{ particle_a, particle_b, particle_c, angle });
-    }
-
-    pub fn get_angle(&mut self, particle_a: usize, particle_b: usize, particle_c: usize) -> f32 {
-        let [a, b, c] = self.particles.get_many_mut([particle_a, particle_b, particle_c]).unwrap();
-        let ba = (b.pos - a.pos).normalize();
-        let bc = (b.pos - c.pos).normalize();
-        bc.angle_between(ba)
-    }
 }

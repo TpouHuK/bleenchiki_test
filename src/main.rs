@@ -22,6 +22,7 @@ struct MyWindowHandler {
     dt: f32,
     ticks: f32,
     simulation: ParticleSimulation,
+    tree: Tree,
 }
 
 
@@ -44,12 +45,12 @@ fn get_rotated_quad(ix: f32, iy: f32, w: f32, h: f32, ang: f32) -> [Vec2; 4] {
 
 
 impl MyWindowHandler {
-    fn new(simulation: ParticleSimulation) -> Self {
+    fn new(simulation: ParticleSimulation, tree: Tree) -> Self {
         let last_frame = time::Instant::now();
         let mouse_pos = (0.0, 0.0);
         let dt = 0.0;
         let ticks = 0.0;
-        MyWindowHandler { mouse_pos, last_frame, dt, ticks, simulation }
+        MyWindowHandler { mouse_pos, last_frame, dt, ticks, simulation, tree }
     }
 
     fn calc_fps(&mut self) {
@@ -63,7 +64,8 @@ impl MyWindowHandler {
     }
 
     fn _draw(&mut self, graphics: &mut Graphics2D) {
-        self.simulation.display(graphics);
+        //self.simulation.display(graphics);
+        self.tree.display(graphics);
         self.simulation.physics_step();
     }
 }
@@ -87,8 +89,8 @@ impl WindowHandler for MyWindowHandler
 
 fn main() {
     let window = Window::new_centered("Hello testing", (1280, 720)).unwrap();
-    let mut simulation = ParticleSimulation::new();
-    create_new_tree(&mut simulation);
-    let window_handler = MyWindowHandler::new(simulation);
+    let simulation = ParticleSimulation::new();
+    let tree = generate_tree();
+    let window_handler = MyWindowHandler::new(simulation, tree);
     window.run_loop::<MyWindowHandler>(window_handler);
 }
